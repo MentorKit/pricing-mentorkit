@@ -1,10 +1,10 @@
 'use client';
 
 import { useId } from 'react';
-import type { MauBucket } from './pricing.config';
+import type { Bucket } from './pricing.config';
 
 interface MauSliderProps {
-  buckets: MauBucket[];
+  buckets: Bucket[];
   valueIndex: number;
   onChangeIndex: (index: number) => void;
   className?: string;
