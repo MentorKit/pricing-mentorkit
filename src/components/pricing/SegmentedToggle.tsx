@@ -44,14 +44,14 @@ export function SegmentedToggle<T extends string>({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {label && (
-        <span className="text-sm font-medium text-slate-600" id={`${id}-label`}>
+        <span className="text-sm font-medium text-foreground-secondary" id={`${id}-label`}>
           {label}
         </span>
       )}
       <div
         role="radiogroup"
         aria-labelledby={label ? `${id}-label` : undefined}
-        className="inline-flex rounded-lg bg-slate-100 p-1"
+        className="inline-flex rounded-lg border border-border bg-background p-1 shadow-sm"
       >
         {options.map((option, index) => {
           const isSelected = value === option.value;
@@ -65,13 +65,13 @@ export function SegmentedToggle<T extends string>({
               onClick={() => onChange(option.value)}
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={`
-                relative flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium
+                relative flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold
                 transition-all duration-200 focus:outline-none focus-visible:ring-2
-                focus-visible:ring-indigo-500 focus-visible:ring-offset-2
+                focus-visible:ring-primary focus-visible:ring-offset-2
                 ${
                   isSelected
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-primary text-primary-text shadow-md'
+                    : 'text-foreground-secondary hover:bg-accent hover:text-foreground'
                 }
               `}
             >
@@ -79,11 +79,11 @@ export function SegmentedToggle<T extends string>({
               {option.badge && (
                 <span
                   className={`
-                    rounded-full px-2 py-0.5 text-xs font-medium
+                    rounded-full px-2 py-0.5 text-xs font-semibold
                     ${
                       isSelected
-                        ? 'bg-indigo-100 text-indigo-700'
-                        : 'bg-slate-200 text-slate-600'
+                        ? 'bg-primary-text/20 text-primary-text'
+                        : 'bg-primary/10 text-primary'
                     }
                   `}
                 >

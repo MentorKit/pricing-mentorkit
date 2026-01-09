@@ -4,7 +4,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { SegmentedToggle } from './SegmentedToggle';
 import { BucketSlider } from './BucketSlider';
 import { PlanGrid } from './PlanGrid';
-import { getPricingSelection, getDefaultState, type PricingState } from './pricing.engine';
+import {
+  getPricingSelection,
+  getDefaultState,
+  getCreatorDiscountPercent,
+  getCreatorDiscountRange,
+  type PricingState,
+} from './pricing.engine';
 import {
   CREATOR_BUCKETS,
   ACTIVE_USERS_BUCKETS,
@@ -43,37 +49,50 @@ export function PricingCalculatorSection() {
 
   return (
     <section className="w-full">
-      {/* Controls */}
-      <div className="mb-12 flex flex-col gap-8">
-        {/* Billing Toggle */}
-        <div className="flex justify-center">
-          <SegmentedToggle
-            options={BILLING_OPTIONS}
-            value={state.billing}
-            onChange={handleBillingChange}
-            label="Billing"
-          />
-        </div>
+      {/* Controls Card */}
+      <div className="mb-12 rounded-2xl border border-border bg-background-muted/50 p-5 sm:p-6">
+        <div className="flex flex-col gap-6">
+          {/* Row 1: Billing Toggle + Course Creators Slider */}
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:gap-8">
+            {/* Billing Toggle */}
+            <div className="flex flex-col gap-1.5 flex-shrink-0">
+              <span className="text-sm font-medium text-foreground-secondary">
+                Billing cycle
+              </span>
+              <SegmentedToggle
+                options={BILLING_OPTIONS}
+                value={state.billing}
+                onChange={handleBillingChange}
+              />
+            </div>
 
-        {/* Sliders */}
-        <div className="mx-auto w-full max-w-2xl space-y-8">
-          {/* Course Creators Slider */}
-          <BucketSlider
-            label="How many course creators?"
-            buckets={CREATOR_BUCKETS}
-            valueIndex={state.creatorsBucketIndex}
-            onChangeIndex={handleCreatorsChange}
-            valueSuffix="creators"
-          />
+            {/* Divider - visible on lg+ */}
+            <div className="hidden lg:block self-stretch w-px bg-border" />
 
-          {/* Active Users Slider */}
-          <BucketSlider
-            label="How many active users in the LMS?"
-            buckets={ACTIVE_USERS_BUCKETS}
-            valueIndex={state.activeUsersBucketIndex}
-            onChangeIndex={handleActiveUsersChange}
-            valueSuffix="users"
-          />
+            {/* Course Creators Slider */}
+            <div className="flex-1 min-w-0">
+              <BucketSlider
+                label="How many course creators?"
+                buckets={CREATOR_BUCKETS}
+                valueIndex={state.creatorsBucketIndex}
+                onChangeIndex={handleCreatorsChange}
+                valueSuffix="creators"
+                getDiscountPercent={getCreatorDiscountPercent}
+                getDiscountRange={getCreatorDiscountRange}
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Active Users Slider */}
+          <div className="border-t border-border pt-6">
+            <BucketSlider
+              label="How many active users in the LMS?"
+              buckets={ACTIVE_USERS_BUCKETS}
+              valueIndex={state.activeUsersBucketIndex}
+              onChangeIndex={handleActiveUsersChange}
+              valueSuffix="users"
+            />
+          </div>
         </div>
       </div>
 

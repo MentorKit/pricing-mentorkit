@@ -138,14 +138,13 @@ export const CREATOR_PRICE_NOK_PER_MONTH = 1300;
  * Discounts apply progressively - the highest applicable discount is used.
  * Format: { minCreators: number, discountPercent: number }
  */
-export const CREATOR_VOLUME_DISCOUNTS: Array<{
-  minCreators: number;
-  discountPercent: number;
-}> = [
-  { minCreators: 5, discountPercent: 5 },   // 5% off for 5+ creators
-  { minCreators: 10, discountPercent: 10 }, // 10% off for 10+ creators
-  { minCreators: 20, discountPercent: 15 }, // 15% off for 20+ creators
-];
+export const CREATOR_VOLUME_DISCOUNTS = [
+    { minCreators: 3, discountPercent: 10 },
+    { minCreators: 5, discountPercent: 20 },
+    { minCreators: 10, discountPercent: 30 },
+    { minCreators: 20, discountPercent: 40 },
+  ];
+  
 
 /**
  * Suite Classic: Base platform fee per active users tier (monthly, in NOK).

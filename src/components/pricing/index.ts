@@ -4,6 +4,7 @@ export { SegmentedToggle } from './SegmentedToggle';
 export { BucketSlider } from './BucketSlider';
 export { PlanCard } from './PlanCard';
 export { PlanGrid } from './PlanGrid';
+export { EnterpriseAddOns } from './EnterpriseAddOns';
 
 // Config exports (for advanced usage / customization)
 export * from './pricing.config';

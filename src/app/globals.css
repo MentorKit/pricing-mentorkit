@@ -1,13 +1,90 @@
 @import "tailwindcss";
 
+/* ============================================
+   MENTORKIT COLOR THEME
+   ============================================ */
+
 :root {
+  /* Brand Colors */
+  --primary: #fc5623;
+  --primary-hover: #e43804;
+  --primary-active: #c93003;
+  --primary-light: #ff7a52;
+  
+  /* Background Colors */
   --background: #ffffff;
-  --foreground: #0f172a;
+  --background-muted: #f1f4f6;
+  --background-card: #ffffff;
+  --background-card-hover: #f8fafc;
+  
+  /* Text Colors */
+  --foreground: #051826;
+  --foreground-secondary: #525252;
+  --foreground-muted: #6b7280;
+  
+  /* Border Colors */
+  --border: #dadada;
+  --border-hover: #c4c4c4;
+  
+  /* Additional */
+  --accent: #f1f4f6;
+  --accent-hover: #e5e9ec;
+  --ring: #fc5623;
+  --primary-text: #ffffff;
+  
+  /* Shadow Colors */
+  --shadow-sm: rgba(0, 0, 0, 0.05);
+  --shadow-md: rgba(0, 0, 0, 0.1);
+  --shadow-lg: rgba(0, 0, 0, 0.15);
+}
+
+.dark {
+  /* Brand Colors - slightly lighter for dark mode */
+  --primary: #ff7a52;
+  --primary-hover: #fc5623;
+  --primary-active: #e43804;
+  --primary-light: #ff9a7a;
+  
+  /* Background Colors */
+  --background: #051826;
+  --background-muted: #0a2540;
+  --background-card: #0a2540;
+  --background-card-hover: #0f3356;
+  
+  /* Text Colors */
+  --foreground: #f1f4f6;
+  --foreground-secondary: #dadada;
+  --foreground-muted: #9ca3af;
+  
+  /* Border Colors */
+  --border: #1e3a5f;
+  --border-hover: #2d4a6f;
+  
+  /* Additional */
+  --accent: #0a2540;
+  --accent-hover: #0f3356;
+  --ring: #ff7a52;
+  --primary-text: #051826;
+  
+  /* Shadow Colors */
+  --shadow-sm: rgba(0, 0, 0, 0.3);
+  --shadow-md: rgba(0, 0, 0, 0.4);
+  --shadow-lg: rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-muted: var(--background-muted);
+  --color-background-card: var(--background-card);
   --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-accent: var(--accent);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,6 +93,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom slider thumb styling */
@@ -31,44 +109,47 @@ input[type="range"]::-webkit-slider-thumb {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--primary);
   cursor: pointer;
-  border: 4px solid #ffffff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 4px solid var(--background);
+  box-shadow: 0 2px 6px var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  background: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(252, 86, 35, 0.3);
 }
 
 input[type="range"]::-webkit-slider-thumb:active {
   transform: scale(0.95);
+  background: var(--primary-active);
 }
 
 input[type="range"]::-moz-range-thumb {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #6366f1;
+  background: var(--primary);
   cursor: pointer;
-  border: 4px solid #ffffff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 4px solid var(--background);
+  box-shadow: 0 2px 6px var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
 input[type="range"]::-moz-range-thumb:hover {
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  background: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(252, 86, 35, 0.3);
 }
 
 input[type="range"]:focus-visible::-webkit-slider-thumb {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 
 input[type="range"]:focus-visible::-moz-range-thumb {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }

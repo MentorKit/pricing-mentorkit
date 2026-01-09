@@ -69,9 +69,14 @@ function formatPrice(price: number): string {
 }
 
 /**
- * Calculate the effective price per creator after volume discounts.
+ * Get the discount percentage for a given number of creators.
+ * Returns 0 if no discount applies.
  */
-function getCreatorPrice(creatorCount: number): number {
+export function getCreatorDiscountPercent(creatorCount: number): number {
+  if (creatorCount === Infinity) {
+    return 0; // No discount for "50+" bucket
+  }
+
   let discountPercent = 0;
 
   // Find the highest applicable discount
@@ -81,6 +86,60 @@ function getCreatorPrice(creatorCount: number): number {
     }
   }
 
+  return discountPercent;
+}
+
+/**
+ * Get the discount range label for a given creator count and next bucket value.
+ * Returns null if no discount applies.
+ * Example: For 3 creators with next value 5, returns "3-4"
+ */
+export function getCreatorDiscountRange(
+  creatorCount: number,
+  nextValue: number
+): string | null {
+  if (creatorCount === Infinity) {
+    return null;
+  }
+
+  const discountPercent = getCreatorDiscountPercent(creatorCount);
+  if (discountPercent === 0) {
+    return null;
+  }
+
+  // Find the next discount tier that has a higher discount percentage
+  // The current discount applies until the next higher discount tier starts
+  let upperBound: number | null = null;
+  
+  // Check if there's a higher discount tier
+  for (const tier of CREATOR_VOLUME_DISCOUNTS) {
+    if (tier.minCreators > creatorCount && tier.discountPercent > discountPercent) {
+      upperBound = tier.minCreators - 1;
+      break;
+    }
+  }
+
+  // If no higher discount tier exists, use nextValue - 1 (or show "+" if Infinity)
+  if (upperBound === null) {
+    if (nextValue === Infinity) {
+      return `${creatorCount}+`;
+    }
+    upperBound = nextValue - 1;
+  }
+
+  // If upper bound equals the current count, just show the count
+  if (upperBound === creatorCount) {
+    return `${creatorCount}`;
+  }
+
+  return `${creatorCount}-${upperBound}`;
+}
+
+/**
+ * Calculate the effective price per creator after volume discounts.
+ */
+function getCreatorPrice(creatorCount: number): number {
+  const discountPercent = getCreatorDiscountPercent(creatorCount);
   const basePrice = CREATOR_PRICE_NOK_PER_MONTH;
   return basePrice * (1 - discountPercent / 100);
 }
