@@ -8,6 +8,7 @@ interface PlanCardProps {
 
 export function PlanCard({ plan }: PlanCardProps) {
   const {
+    id,
     title,
     subtitle,
     displayPrice,
@@ -18,16 +19,23 @@ export function PlanCard({ plan }: PlanCardProps) {
     features,
     isHighlighted,
     isContactSales,
+    caseStudies,
+    pricingExamples,
+    helperText,
   } = plan;
+
+  const isEnterprise = id === 'enterprise';
 
   return (
     <div
       className={`
         relative flex flex-col rounded-2xl border p-6 transition-shadow
         ${
-          isHighlighted
-            ? 'border-primary bg-background-card shadow-lg ring-1 ring-primary'
-            : 'border-border bg-background-card hover:shadow-md'
+          isEnterprise
+            ? 'border-foreground-muted/30 bg-background-muted/50 hover:shadow-md'
+            : isHighlighted
+              ? 'border-primary bg-background-card shadow-lg ring-1 ring-primary'
+              : 'border-border bg-background-card hover:shadow-md'
         }
       `}
     >
@@ -50,7 +58,7 @@ export function PlanCard({ plan }: PlanCardProps) {
       <div className="mb-6">
         <div className="flex items-baseline gap-1">
           <span
-            className={`text-4xl font-bold tracking-tight ${
+            className={`text-3xl font-bold tracking-tight ${
               isContactSales ? 'text-foreground-secondary' : 'text-foreground'
             }`}
           >
@@ -60,10 +68,31 @@ export function PlanCard({ plan }: PlanCardProps) {
         {priceNote && (
           <p className="mt-1 text-sm text-foreground-muted">{priceNote}</p>
         )}
+        {helperText && (
+          <p className="mt-1 text-xs text-foreground-muted italic">{helperText}</p>
+        )}
         <p className="mt-2 text-sm font-medium text-primary">
           {includedLabel}
         </p>
       </div>
+
+      {/* Pricing examples */}
+      {pricingExamples && pricingExamples.length > 0 && (
+        <div className="mb-4 space-y-1">
+          {pricingExamples.map((example, index) => (
+            <p key={index} className="text-xs text-foreground-muted">
+              {example}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Case studies */}
+      {caseStudies && (
+        <p className="mb-4 text-xs text-foreground-muted">
+          <span className="font-medium">Brukes av:</span> {caseStudies}
+        </p>
+      )}
 
       {/* CTA */}
       <a
@@ -73,9 +102,11 @@ export function PlanCard({ plan }: PlanCardProps) {
           transition-all focus:outline-none focus-visible:ring-2
           focus-visible:ring-offset-2
           ${
-            isHighlighted
-              ? 'border-primary bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary'
-              : 'border-primary bg-transparent text-primary hover:bg-primary hover:text-white focus-visible:ring-primary'
+            isEnterprise
+              ? 'border-foreground-secondary bg-foreground-secondary text-white hover:bg-foreground hover:border-foreground focus-visible:ring-foreground'
+              : isHighlighted
+                ? 'border-primary bg-primary text-white hover:bg-primary-hover focus-visible:ring-primary'
+                : 'border-primary bg-transparent text-primary hover:bg-primary hover:text-white focus-visible:ring-primary'
           }
         `}
       >

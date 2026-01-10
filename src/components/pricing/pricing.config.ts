@@ -9,7 +9,16 @@
 // ----------------------------------------------------------------------------
 
 export type BillingCycle = 'monthly' | 'yearly';
-export type PlanId = 'author' | 'suite_classic' | 'suite_pro' | 'enterprise';
+export type PlanId = 'author' | 'core_classic' | 'suite_classic' | 'suite_pro' | 'enterprise';
+
+/** Ordered list of plan IDs for UI rendering */
+export const PLAN_ORDER: PlanId[] = [
+  'author',
+  'core_classic',
+  'suite_classic',
+  'suite_pro',
+  'enterprise',
+];
 
 export interface Bucket {
   id: string;
@@ -27,6 +36,14 @@ export interface Plan {
   features: string[];
   /** Whether this plan includes an LMS (affects active users slider visibility) */
   includesLms: boolean;
+  /** Whether this plan includes Course Creator (affects creators slider relevance) */
+  includesCreator: boolean;
+  /** Example customer case studies */
+  caseStudies?: string;
+  /** Example pricing lines to show under the price (e.g., "Kr 2690 per måned for 100 aktive brukere") */
+  pricingExamples?: string[];
+  /** Helper text for quote-only plans */
+  helperText?: string;
 }
 
 // ----------------------------------------------------------------------------
@@ -70,11 +87,27 @@ export const PLANS: Plan[] = [
     ctaLabel: 'Get started',
     ctaHref: '/signup?plan=author',
     includesLms: false,
+    includesCreator: true,
     features: [
       'Full MentorKit Course Creator',
       'Supports multiple course creators',
       'SCORM and xAPI export',
       'No LMS or course delivery included',
+    ],
+  },
+  {
+    id: 'core_classic',
+    title: 'Core Classic',
+    subtitle: 'For organisations that need LMS only',
+    ctaLabel: 'Start free trial',
+    ctaHref: '/signup?plan=core_classic',
+    includesLms: true,
+    includesCreator: false,
+    features: [
+      'LMS Classic for course delivery',
+      'User tracking and basic reporting',
+      'Import SCORM/xAPI courses',
+      'Email support',
     ],
   },
   {
@@ -84,6 +117,7 @@ export const PLANS: Plan[] = [
     ctaLabel: 'Start free trial',
     ctaHref: '/signup?plan=suite_classic',
     includesLms: true,
+    includesCreator: true,
     features: [
       'Course Creator included',
       'LMS Classic for course delivery',
@@ -99,6 +133,7 @@ export const PLANS: Plan[] = [
     ctaLabel: 'Start free trial',
     ctaHref: '/signup?plan=suite_pro',
     includesLms: true,
+    includesCreator: true,
     features: [
       'Course Creator included',
       'LMS Pro with advanced automation',
@@ -110,15 +145,18 @@ export const PLANS: Plan[] = [
   {
     id: 'enterprise',
     title: 'Enterprise',
-    subtitle: 'For custom learning and commercial course platforms',
+    subtitle: 'Store organisasjoner / komplekse krav / integrasjoner / SLA',
     ctaLabel: 'Contact sales',
     ctaHref: '/contact?plan=enterprise',
     includesLms: true,
+    includesCreator: true,
+    helperText: 'Pricing depends on scope — talk to sales.',
     features: [
-      'Webshop and course sales',
-      'Custom integrations and workflows',
-      'MentorKit Assist (coaching, setup, customisation)',
-      'Custom SLAs and support agreements',
+      'HR-system integration',
+      'Microsoft Teams integration',
+      'Calendar/email integration',
+      'Custom SLA / security',
+      'Migration / implementation (Assist)',
     ],
   },
 ];
@@ -131,7 +169,7 @@ export const PLANS: Plan[] = [
  * Price per course creator per month (in NOK).
  * This is the base price that applies to all plans.
  */
-export const CREATOR_PRICE_NOK_PER_MONTH = 1300;
+export const CREATOR_PRICE_NOK_PER_MONTH = 1390;
 
 /**
  * Volume discount tiers for course creators.
@@ -145,6 +183,21 @@ export const CREATOR_VOLUME_DISCOUNTS = [
     { minCreators: 20, discountPercent: 40 },
   ];
   
+
+/**
+ * Core Classic (LMS Classic only): Platform fee per active users tier (monthly, in NOK).
+ * Anchors from screenshot: 100 users = 2690, 500 users = 4590
+ */
+export const CORE_CLASSIC_USER_PRICES: Record<string, number | null> = {
+  users_50: 1990,      // Placeholder - adjust as needed
+  users_100: 2690,     // From screenshot
+  users_250: 3590,     // Placeholder - adjust as needed
+  users_500: 4590,     // From screenshot
+  users_1000: 6990,    // Placeholder - adjust as needed
+  users_2500: 12990,   // Placeholder - adjust as needed
+  users_5000: 22990,   // Placeholder - adjust as needed
+  users_10000_plus: null, // Contact sales
+};
 
 /**
  * Suite Classic: Base platform fee per active users tier (monthly, in NOK).
