@@ -6,10 +6,12 @@ import {
   type BillingCycle,
   type PlanId,
   PLANS,
+  PLAN_ORDER,
   CREATOR_BUCKETS,
   ACTIVE_USERS_BUCKETS,
   CREATOR_PRICE_NOK_PER_MONTH,
   CREATOR_VOLUME_DISCOUNTS,
+  CORE_CLASSIC_USER_PRICES,
   SUITE_CLASSIC_USER_PRICES,
   SUITE_PRO_USER_PRICES,
   YEARLY_DISCOUNT,
@@ -30,7 +32,7 @@ export interface PlanViewModel {
   id: PlanId;
   title: string;
   subtitle: string;
-  displayPrice: string; // e.g., "kr 5,200" or "Contact us"
+  displayPrice: string; // e.g., "kr 5,200" or "Contact sales"
   priceNote: string; // e.g., "/ month" or "billed annually"
   includedLabel: string; // e.g., "2 course creators" or "2 creators + 250 active users"
   ctaLabel: string;
@@ -40,6 +42,10 @@ export interface PlanViewModel {
   isContactSales: boolean;
   rawPrice: number | null; // for sorting/comparison, null if contact sales
   includesLms: boolean;
+  includesCreator: boolean;
+  caseStudies?: string;
+  pricingExamples?: string[];
+  helperText?: string;
 }
 
 export interface PricingSelection {
@@ -157,6 +163,13 @@ function calculateCreatorCost(creatorCount: number): number {
 }
 
 /**
+ * Get the platform fee for Core Classic (LMS only) based on active users tier.
+ */
+function getCoreClassicPlatformFee(activeUsersBucketId: string): number | null {
+  return CORE_CLASSIC_USER_PRICES[activeUsersBucketId] ?? null;
+}
+
+/**
  * Get the platform fee for Suite Classic based on active users tier.
  */
 function getSuiteClassicPlatformFee(activeUsersBucketId: string): number | null {
@@ -181,8 +194,19 @@ function getIncludedLabel(
   planId: PlanId,
   creatorCount: number,
   activeUsersLabel: string,
-  includesLms: boolean
+  includesLms: boolean,
+  includesCreator: boolean
 ): string {
+  // Enterprise always shows custom scope
+  if (planId === 'enterprise') {
+    return 'Custom scope';
+  }
+
+  // Core Classic only shows active users (no creators)
+  if (planId === 'core_classic') {
+    return `${activeUsersLabel} active users`;
+  }
+
   const creatorLabel =
     creatorCount === Infinity
       ? '50+ course creators'
@@ -190,10 +214,12 @@ function getIncludedLabel(
         ? '1 course creator'
         : `${creatorCount} course creators`;
 
+  // Author only shows creators
   if (!includesLms || planId === 'author') {
     return creatorLabel;
   }
 
+  // Suite plans show both creators and users
   return `${creatorLabel} + ${activeUsersLabel} active users`;
 }
 
@@ -211,27 +237,39 @@ function getPriceForPlan(
 
   const creatorCount = creatorBucket.value;
 
-  // Enterprise is always "Contact us"
+  // Enterprise is always "Contact sales"
   if (planId === 'enterprise') {
     return null;
   }
-
-  // Handle "50+" creators bucket - contact sales
-  if (creatorCount === Infinity) {
-    return null;
-  }
-
-  const creatorCost = calculateCreatorCost(creatorCount);
 
   let monthlyPrice: number;
 
   switch (planId) {
     case 'author':
       // Author only pays for creators, no platform fee
-      monthlyPrice = creatorCost;
+      // Handle "50+" creators bucket - contact sales for creator-priced plans
+      if (creatorCount === Infinity) {
+        return null;
+      }
+      monthlyPrice = calculateCreatorCost(creatorCount);
       break;
 
+    case 'core_classic': {
+      // Core Classic ignores creators entirely - LMS only pricing
+      const platformFee = getCoreClassicPlatformFee(userBucket.id);
+      if (platformFee === null) {
+        return null; // Contact sales for this tier
+      }
+      monthlyPrice = platformFee;
+      break;
+    }
+
     case 'suite_classic': {
+      // Handle "50+" creators bucket - contact sales for creator-priced plans
+      if (creatorCount === Infinity) {
+        return null;
+      }
+      const creatorCost = calculateCreatorCost(creatorCount);
       const platformFee = getSuiteClassicPlatformFee(userBucket.id);
       if (platformFee === null) {
         return null; // Contact sales for this tier
@@ -241,6 +279,11 @@ function getPriceForPlan(
     }
 
     case 'suite_pro': {
+      // Handle "50+" creators bucket - contact sales for creator-priced plans
+      if (creatorCount === Infinity) {
+        return null;
+      }
+      const creatorCost = calculateCreatorCost(creatorCount);
       const platformFee = getSuiteProPlatformFee(userBucket.id);
       if (platformFee === null) {
         return null; // Contact sales for this tier
@@ -271,7 +314,14 @@ export function getPricingSelection(state: PricingState): PricingSelection {
   const selectedActiveUsersBucket =
     ACTIVE_USERS_BUCKETS[activeUsersBucketIndex] ?? ACTIVE_USERS_BUCKETS[0];
 
-  const plans: PlanViewModel[] = PLANS.map((plan) => {
+  // Sort plans according to PLAN_ORDER
+  const sortedPlans = [...PLANS].sort((a, b) => {
+    const aIndex = PLAN_ORDER.indexOf(a.id);
+    const bIndex = PLAN_ORDER.indexOf(b.id);
+    return aIndex - bIndex;
+  });
+
+  const plans: PlanViewModel[] = sortedPlans.map((plan) => {
     const rawPrice = getPriceForPlan(plan.id, state);
     const isContactSales = plan.id === 'enterprise' || rawPrice === null;
 
@@ -279,7 +329,7 @@ export function getPricingSelection(state: PricingState): PricingSelection {
     let priceNote: string;
 
     if (isContactSales) {
-      displayPrice = 'Contact us';
+      displayPrice = 'Contact sales';
       priceNote = '';
     } else {
       displayPrice = formatPrice(rawPrice);
@@ -293,7 +343,8 @@ export function getPricingSelection(state: PricingState): PricingSelection {
       plan.id,
       selectedCreatorsBucket.value,
       selectedActiveUsersBucket.label,
-      plan.includesLms
+      plan.includesLms,
+      plan.includesCreator
     );
 
     return {
@@ -310,6 +361,10 @@ export function getPricingSelection(state: PricingState): PricingSelection {
       isContactSales,
       rawPrice,
       includesLms: plan.includesLms,
+      includesCreator: plan.includesCreator,
+      caseStudies: plan.caseStudies,
+      pricingExamples: plan.pricingExamples,
+      helperText: plan.helperText,
     };
   });
 

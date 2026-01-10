@@ -9,7 +9,7 @@ interface PlanGridProps {
 
 export function PlanGrid({ plans }: PlanGridProps) {
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {plans.map((plan) => (
         <PlanCard key={plan.id} plan={plan} />
       ))}
