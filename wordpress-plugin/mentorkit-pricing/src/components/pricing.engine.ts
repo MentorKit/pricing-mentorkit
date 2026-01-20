@@ -1,0 +1,436 @@
+// ============================================================================
+// PRICING ENGINE - Pure functions for computing pricing view models
+// ============================================================================
+
+import {
+  type BillingCycle,
+  type PlanId,
+  PLANS,
+  PLAN_ORDER,
+  CREATOR_BUCKETS,
+  ACTIVE_USERS_BUCKETS,
+  CREATOR_PRICE_NOK_PER_MONTH,
+  CREATOR_VOLUME_DISCOUNTS,
+  CORE_CLASSIC_USER_PRICES,
+  SUITE_CLASSIC_USER_PRICES,
+  SUITE_PRO_USER_PRICES,
+  YEARLY_DISCOUNT,
+  DISPLAY_CONFIG,
+} from './pricing.config';
+
+// ----------------------------------------------------------------------------
+// Types
+// ----------------------------------------------------------------------------
+
+export interface PricingState {
+  billing: BillingCycle;
+  creatorsBucketIndex: number;
+  activeUsersBucketIndex: number;
+}
+
+export interface PlanViewModel {
+  id: PlanId;
+  title: string;
+  subtitle: string;
+  displayPrice: string; // e.g., "kr 5,200" or "Contact sales"
+  priceNote: string; // e.g., "/ month" or "billed annually"
+  includedLabel: string; // e.g., "2 course creators" or "2 creators + 250 active users"
+  ctaLabel: string;
+  ctaHref: string;
+  features: string[];
+  isHighlighted: boolean;
+  isContactSales: boolean;
+  rawPrice: number | null; // for sorting/comparison, null if contact sales
+  includesLms: boolean;
+  includesCreator: boolean;
+  caseStudies?: string;
+  pricingExamples?: string[];
+  helperText?: string;
+}
+
+export interface PricingSelection {
+  plans: PlanViewModel[];
+  selectedCreatorsBucket: {
+    id: string;
+    label: string;
+    value: number;
+  };
+  selectedActiveUsersBucket: {
+    id: string;
+    label: string;
+    value: number;
+  };
+  state: PricingState;
+}
+
+// ----------------------------------------------------------------------------
+// Helper Functions
+// ----------------------------------------------------------------------------
+
+function formatPrice(price: number): string {
+  const { currencySymbol } = DISPLAY_CONFIG;
+  // Format with space as thousands separator (Norwegian style)
+  const formatted = price.toLocaleString('nb-NO');
+  return `${currencySymbol} ${formatted}`;
+}
+
+/**
+ * Get the discount percentage for a given number of creators.
+ * Returns 0 if no discount applies.
+ */
+export function getCreatorDiscountPercent(creatorCount: number): number {
+  if (creatorCount === Infinity) {
+    return 0; // No discount for "50+" bucket
+  }
+
+  let discountPercent = 0;
+
+  // Find the highest applicable discount
+  for (const tier of CREATOR_VOLUME_DISCOUNTS) {
+    if (creatorCount >= tier.minCreators && tier.discountPercent > discountPercent) {
+      discountPercent = tier.discountPercent;
+    }
+  }
+
+  return discountPercent;
+}
+
+/**
+ * Get the discount range label for a given creator count and next bucket value.
+ * Returns null if no discount applies.
+ * Example: For 3 creators with next value 5, returns "3-4"
+ */
+export function getCreatorDiscountRange(
+  creatorCount: number,
+  nextValue: number
+): string | null {
+  if (creatorCount === Infinity) {
+    return null;
+  }
+
+  const discountPercent = getCreatorDiscountPercent(creatorCount);
+  if (discountPercent === 0) {
+    return null;
+  }
+
+  // Find the next discount tier that has a higher discount percentage
+  // The current discount applies until the next higher discount tier starts
+  let upperBound: number | null = null;
+
+  // Check if there's a higher discount tier
+  for (const tier of CREATOR_VOLUME_DISCOUNTS) {
+    if (tier.minCreators > creatorCount && tier.discountPercent > discountPercent) {
+      upperBound = tier.minCreators - 1;
+      break;
+    }
+  }
+
+  // If no higher discount tier exists, use nextValue - 1 (or show "+" if Infinity)
+  if (upperBound === null) {
+    if (nextValue === Infinity) {
+      return `${creatorCount}+`;
+    }
+    upperBound = nextValue - 1;
+  }
+
+  // If upper bound equals the current count, just show the count
+  if (upperBound === creatorCount) {
+    return `${creatorCount}`;
+  }
+
+  return `${creatorCount}-${upperBound}`;
+}
+
+/**
+ * Calculate the effective price per creator after volume discounts.
+ */
+function getCreatorPrice(creatorCount: number): number {
+  const discountPercent = getCreatorDiscountPercent(creatorCount);
+  const basePrice = CREATOR_PRICE_NOK_PER_MONTH;
+  return basePrice * (1 - discountPercent / 100);
+}
+
+/**
+ * Calculate the total creator cost for a given number of creators.
+ */
+function calculateCreatorCost(creatorCount: number): number {
+  if (creatorCount === Infinity) {
+    // For "50+" bucket, we can't calculate - show contact
+    return Infinity;
+  }
+  const pricePerCreator = getCreatorPrice(creatorCount);
+  return Math.round(creatorCount * pricePerCreator);
+}
+
+/**
+ * Get the platform fee for Core Classic (LMS only) based on active users tier.
+ */
+function getCoreClassicPlatformFee(activeUsersBucketId: string): number | null {
+  return CORE_CLASSIC_USER_PRICES[activeUsersBucketId] ?? null;
+}
+
+/**
+ * Get the platform fee for Suite Classic based on active users tier.
+ */
+function getSuiteClassicPlatformFee(activeUsersBucketId: string): number | null {
+  return SUITE_CLASSIC_USER_PRICES[activeUsersBucketId] ?? null;
+}
+
+/**
+ * Get the platform fee for Suite Pro based on active users tier.
+ */
+function getSuiteProPlatformFee(activeUsersBucketId: string): number | null {
+  return SUITE_PRO_USER_PRICES[activeUsersBucketId] ?? null;
+}
+
+/**
+ * Apply yearly discount to a monthly price.
+ */
+function applyYearlyDiscount(monthlyPrice: number): number {
+  return Math.round(monthlyPrice * (1 - YEARLY_DISCOUNT));
+}
+
+function getIncludedLabel(
+  planId: PlanId,
+  creatorCount: number,
+  activeUsersLabel: string,
+  includesLms: boolean,
+  _includesCreator: boolean
+): string {
+  // Enterprise always shows custom scope
+  if (planId === 'enterprise') {
+    return 'Custom scope';
+  }
+
+  // Core Classic only shows active users (no creators)
+  if (planId === 'core_classic') {
+    return `${activeUsersLabel} active users`;
+  }
+
+  const creatorLabel =
+    creatorCount === Infinity
+      ? '50+ course creators'
+      : creatorCount === 1
+        ? '1 course creator'
+        : `${creatorCount} course creators`;
+
+  // Author only shows creators
+  if (!includesLms || planId === 'author') {
+    return creatorLabel;
+  }
+
+  // Suite plans show both creators and users
+  return `${creatorLabel} + ${activeUsersLabel} active users`;
+}
+
+function getPriceForPlan(
+  planId: PlanId,
+  state: PricingState
+): number | null {
+  const { billing, creatorsBucketIndex, activeUsersBucketIndex } = state;
+  const creatorBucket = CREATOR_BUCKETS[creatorsBucketIndex];
+  const userBucket = ACTIVE_USERS_BUCKETS[activeUsersBucketIndex];
+
+  if (!creatorBucket || !userBucket) {
+    return null;
+  }
+
+  const creatorCount = creatorBucket.value;
+
+  // Enterprise is always "Contact sales"
+  if (planId === 'enterprise') {
+    return null;
+  }
+
+  let monthlyPrice: number;
+
+  switch (planId) {
+    case 'author':
+      // Author only pays for creators, no platform fee
+      // Handle "50+" creators bucket - contact sales for creator-priced plans
+      if (creatorCount === Infinity) {
+        return null;
+      }
+      monthlyPrice = calculateCreatorCost(creatorCount);
+      break;
+
+    case 'core_classic': {
+      // Core Classic ignores creators entirely - LMS only pricing
+      const platformFee = getCoreClassicPlatformFee(userBucket.id);
+      if (platformFee === null) {
+        return null; // Contact sales for this tier
+      }
+      monthlyPrice = platformFee;
+      break;
+    }
+
+    case 'suite_classic': {
+      // Handle "50+" creators bucket - contact sales for creator-priced plans
+      if (creatorCount === Infinity) {
+        return null;
+      }
+      const creatorCost = calculateCreatorCost(creatorCount);
+      const platformFee = getSuiteClassicPlatformFee(userBucket.id);
+      if (platformFee === null) {
+        return null; // Contact sales for this tier
+      }
+      monthlyPrice = creatorCost + platformFee;
+      break;
+    }
+
+    case 'suite_pro': {
+      // Handle "50+" creators bucket - contact sales for creator-priced plans
+      if (creatorCount === Infinity) {
+        return null;
+      }
+      const creatorCost = calculateCreatorCost(creatorCount);
+      const platformFee = getSuiteProPlatformFee(userBucket.id);
+      if (platformFee === null) {
+        return null; // Contact sales for this tier
+      }
+      monthlyPrice = creatorCost + platformFee;
+      break;
+    }
+
+    default:
+      return null;
+  }
+
+  // Apply yearly discount if applicable
+  if (billing === 'yearly') {
+    return applyYearlyDiscount(monthlyPrice);
+  }
+
+  return monthlyPrice;
+}
+
+// ----------------------------------------------------------------------------
+// Main Engine Function
+// ----------------------------------------------------------------------------
+
+export function getPricingSelection(state: PricingState): PricingSelection {
+  const { creatorsBucketIndex, activeUsersBucketIndex } = state;
+  const selectedCreatorsBucket = CREATOR_BUCKETS[creatorsBucketIndex] ?? CREATOR_BUCKETS[0];
+  const selectedActiveUsersBucket =
+    ACTIVE_USERS_BUCKETS[activeUsersBucketIndex] ?? ACTIVE_USERS_BUCKETS[0];
+
+  // Sort plans according to PLAN_ORDER
+  const sortedPlans = [...PLANS].sort((a, b) => {
+    const aIndex = PLAN_ORDER.indexOf(a.id);
+    const bIndex = PLAN_ORDER.indexOf(b.id);
+    return aIndex - bIndex;
+  });
+
+  const plans: PlanViewModel[] = sortedPlans.map((plan) => {
+    const rawPrice = getPriceForPlan(plan.id, state);
+    const isContactSales = plan.id === 'enterprise' || rawPrice === null;
+
+    let displayPrice: string;
+    let priceNote: string;
+
+    if (isContactSales) {
+      displayPrice = 'Contact sales';
+      priceNote = '';
+    } else {
+      displayPrice = formatPrice(rawPrice);
+      priceNote =
+        state.billing === 'yearly'
+          ? `/ month, ${DISPLAY_CONFIG.yearlyBillingNote}`
+          : DISPLAY_CONFIG.monthlyBillingNote;
+    }
+
+    const includedLabel = getIncludedLabel(
+      plan.id,
+      selectedCreatorsBucket.value,
+      selectedActiveUsersBucket.label,
+      plan.includesLms,
+      plan.includesCreator
+    );
+
+    return {
+      id: plan.id,
+      title: plan.title,
+      subtitle: plan.subtitle,
+      displayPrice,
+      priceNote,
+      includedLabel,
+      ctaLabel: plan.ctaLabel,
+      ctaHref: buildCtaHref(plan.ctaHref, state),
+      features: plan.features,
+      isHighlighted: plan.isHighlighted ?? false,
+      isContactSales,
+      rawPrice,
+      includesLms: plan.includesLms,
+      includesCreator: plan.includesCreator,
+      caseStudies: plan.caseStudies,
+      pricingExamples: plan.pricingExamples,
+      helperText: plan.helperText,
+    };
+  });
+
+  return {
+    plans,
+    selectedCreatorsBucket: {
+      id: selectedCreatorsBucket.id,
+      label: selectedCreatorsBucket.label,
+      value: selectedCreatorsBucket.value,
+    },
+    selectedActiveUsersBucket: {
+      id: selectedActiveUsersBucket.id,
+      label: selectedActiveUsersBucket.label,
+      value: selectedActiveUsersBucket.value,
+    },
+    state,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// CTA URL Builder
+// ----------------------------------------------------------------------------
+
+function buildCtaHref(baseHref: string, state: PricingState): string {
+  const { billing, creatorsBucketIndex, activeUsersBucketIndex } = state;
+  const creatorBucket = CREATOR_BUCKETS[creatorsBucketIndex];
+  const userBucket = ACTIVE_USERS_BUCKETS[activeUsersBucketIndex];
+
+  const params = new URLSearchParams();
+  params.set('billing', billing);
+  if (creatorBucket) {
+    params.set('creators', creatorBucket.id);
+  }
+  if (userBucket) {
+    params.set('users', userBucket.id);
+  }
+  params.set('source', 'pricing-page');
+
+  const separator = baseHref.includes('?') ? '&' : '?';
+  return `${baseHref}${separator}${params.toString()}`;
+}
+
+// ----------------------------------------------------------------------------
+// Utility Functions (exported for testing)
+// ----------------------------------------------------------------------------
+
+export function getDefaultState(): PricingState {
+  return {
+    billing: 'yearly',
+    creatorsBucketIndex: 1, // Default to 2 creators
+    activeUsersBucketIndex: 2, // Default to 250 active users
+  };
+}
+
+export function isValidCreatorsBucketIndex(index: number): boolean {
+  return index >= 0 && index < CREATOR_BUCKETS.length;
+}
+
+export function isValidActiveUsersBucketIndex(index: number): boolean {
+  return index >= 0 && index < ACTIVE_USERS_BUCKETS.length;
+}
+
+export function clampCreatorsBucketIndex(index: number): number {
+  return Math.max(0, Math.min(index, CREATOR_BUCKETS.length - 1));
+}
+
+export function clampActiveUsersBucketIndex(index: number): number {
+  return Math.max(0, Math.min(index, ACTIVE_USERS_BUCKETS.length - 1));
+}
